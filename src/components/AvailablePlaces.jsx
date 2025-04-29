@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 
 import Places from "./Places.jsx";
 import Error from "./Error.jsx";
+import { sortPlacesByDistance } from "../loc.js";
 
 export default function AvailablePlaces({ onSelectPlace }) {
   const [availablePlaces, setAvailablePlaces] = useState([]);
-  const [isFetching, setIsFetching] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [isError, setIsError] = useState();
 
   useEffect(() => {
@@ -13,19 +14,32 @@ export default function AvailablePlaces({ onSelectPlace }) {
 
     async function fetchPlaces() {
       try {
-        const response = await fetch("http://localhost:3000/placess");
+        const response = await fetch("http://localhost:3000/places");
         const responseData = await response.json();
 
         if (!response.ok) {
           throw new Error("an error occured, try again later");
         }
 
-        setAvailablePlaces(responseData.places);
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const sortedPlaces = sortPlacesByDistance(
+              responseData.places,
+              position.coords.latitude,
+              position.coords.longitude
+            );
+
+            setAvailablePlaces(sortedPlaces);
+            setIsFetching(false);
+          },
+          (error) => {
+            setIsError({ message: "Location access is need to fetch places" });
+          }
+        );
       } catch (error) {
         setIsError({ message: "Please try again later" });
+        setIsFetching(false);
       }
-
-      setIsFetching(false);
     }
 
     fetchPlaces();
