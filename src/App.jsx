@@ -1,11 +1,11 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 
 import Places from "./components/Places.jsx";
 import Modal from "./components/Modal.jsx";
 import DeleteConfirmation from "./components/DeleteConfirmation.jsx";
 import logoImg from "./assets/logo.png";
 import AvailablePlaces from "./components/AvailablePlaces.jsx";
-import { updateUserPlaces } from "./http.js";
+import { fetchUserPlaces, updateUserPlaces } from "./http.js";
 import Error from "./components/Error.jsx";
 
 function App() {
@@ -13,9 +13,30 @@ function App() {
 
   const [userPlaces, setUserPlaces] = useState([]);
 
+  const [isFetching, setIsFetching] = useState(false);
+  const [isError, setIsError] = useState();
+
   const [errorUserPlaces, setErrorUserPlaces] = useState();
 
   const [modalIsOpen, setModalIsOpen] = useState(false);
+
+  useEffect(() => {
+    async function loadUserPlaces() {
+      try {
+        setIsFetching(true);
+
+        const userStoredPlaces = await fetchUserPlaces();
+        setUserPlaces(userStoredPlaces);
+      } catch (error) {
+        setIsError({ message: error.message || "Error loading user places" });
+      } finally {
+        setIsFetching(false);
+      }
+    }
+    setIsFetching(false);
+
+    loadUserPlaces();
+  }, []);
 
   function handleStartRemovePlace(place) {
     setModalIsOpen(true);
@@ -102,12 +123,19 @@ function App() {
         </p>
       </header>
       <main>
-        <Places
-          title="I'd like to visit ..."
-          fallbackText="Select the places you would like to visit below."
-          places={userPlaces}
-          onSelectPlace={handleStartRemovePlace}
-        />
+        {isError && (
+          <Error title="User places not loaded" message={isError.message} />
+        )}
+        {!isError && (
+          <Places
+            title="I'd like to visit ..."
+            fallbackText="Select the places you would like to visit below."
+            isLoading={isFetching}
+            loadingText="Still loading user places"
+            places={userPlaces}
+            onSelectPlace={handleStartRemovePlace}
+          />
+        )}
 
         <AvailablePlaces onSelectPlace={handleSelectPlace} />
       </main>
